@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EVEIN | فروشگاه اکسسوری</title>
+<meta name="description" content="فروشگاه اکسسوری EVEIN">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--pink:#f6e5eb;--rose:#bd8298;--ink:#382d32;--paper:#fffafb;--line:#ead7df}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Tahoma,Arial,sans-serif}
+header{background:linear-gradient(135deg,#f8e9ee,#fff);padding:22px 16px;text-align:center;border-bottom:1px solid var(--line)}
+.logo{width:76px;height:76px;border-radius:50%;border:3px solid white;box-shadow:0 2px 12px #b98b9b55;object-fit:cover;background:#f4dfe7}
+h1{font-family:Georgia,serif;letter-spacing:3px;margin:8px 0 2px;font-size:30px}.sub{font-size:12px;color:#876b77}
+nav{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;padding:12px;background:white;border-bottom:1px solid var(--line)}
+button,.btn{border:0;border-radius:20px;padding:10px 16px;background:var(--rose);color:white;font-size:13px;cursor:pointer}
+button.secondary{background:#f4e5eb;color:#684958}button.dark{background:#493840}
+main{max-width:1050px;margin:22px auto;padding:0 14px}
+h2{font-size:19px;margin:22px 0 14px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:14px}
+.card{background:white;border:1px solid var(--line);border-radius:17px;overflow:hidden;box-shadow:0 3px 12px #6a42500c}
+.card img{width:100%;height:185px;object-fit:cover;background:#f5edf0}.info{padding:12px}.info h3{font-size:14px;margin:0 0 7px}.muted{color:#947d87;font-size:12px}.price{font-weight:bold;margin:8px 0}.stock{font-size:12px;color:#7d5968}
+.card button{width:100%;margin-top:8px}.empty{text-align:center;padding:36px;color:#9b818d;background:white;border:1px dashed var(--line);border-radius:15px}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0}
+input,textarea,select{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;margin:5px 0 12px;background:#fffdfd;font:inherit;font-size:13px}
+label{font-size:12px;color:#705764}textarea{min-height:70px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hidden{display:none!important}
+.menu{position:relative}.menuBox{position:absolute;left:0;top:42px;background:white;border:1px solid var(--line);border-radius:12px;padding:8px;min-width:180px;z-index:5;box-shadow:0 6px 20px #0001}.menuBox button{display:block;width:100%;margin:4px 0;background:#f7eaf0;color:#624653}
+footer{text-align:center;padding:25px;color:#947d87;font-size:12px}
+.review{border-top:1px solid var(--line);padding:8px 0;font-size:12px}
+@media(max-width:520px){.row{grid-template-columns:1fr}.card img{height:165px}}
+</style>
+</head>
+<body>
+<header>
+<img class="logo" id="logo" alt="EVEIN logo" src="https://placehold.co/160x160/f3dfe7/654b58?text=evein">
+<h1>evein</h1><div class="sub">ACCESSORY · ظرافت در جزئیات</div>
+</header>
+<nav>
+<button class="secondary" onclick="showStore()">فروشگاه</button>
+<div class="menu"><button class="dark" onclick="toggleMenu()">☰ منو</button>
+<div id="menuBox" class="menuBox hidden">
+<button onclick="showInfo('contact')">ارتباط با ما</button>
+<button onclick="showInfo('delivery')">نحوه ارسال</button>
+<button onclick="adminEntry()">ورود مدیر</button>
+</div></div>
+</nav>
+<main>
+<section id="storeView">
+<h2>محصولات</h2>
+<div id="categoryBar" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px"></div>
+<div id="products" class="grid"><div class="empty">در حال دریافت محصولات…</div></div>
+</section>
+<section id="infoView" class="hidden"><div class="panel"><button class="secondary" onclick="showStore()">← بازگشت</button><h2 id="infoTitle"></h2><div id="infoText"></div></div></section>
+<section id="adminView" class="hidden">
+<div class="panel"><button class="secondary" onclick="showStore()">← بازگشت به فروشگاه</button><h2>پنل مدیریت EVEIN</h2>
+<div id="loginBox"><p class="muted">با ایمیل و رمز حساب مدیر وارد شوید.</p><label>ایمیل مدیر</label><input id="loginEmail" type="email"><label>رمز عبور</label><input id="loginPass" type="password"><button onclick="login()">ورود</button><p id="loginMsg" class="muted"></p></div>
+<div id="adminTools" class="hidden">
+<button class="secondary" onclick="logout()">خروج از پنل</button>
+<h2>افزودن / ویرایش محصول</h2>
+<input id="editId" type="hidden">
+<label>نام محصول</label><input id="pName" placeholder="مثلاً دستبند آمیتیست">
+<div class="row"><div><label>دسته‌بندی</label><input id="pCategory" placeholder="دستبند"></div><div><label>قیمت (تومان)</label><input id="pPrice" type="number" min="0"></div></div>
+<div class="row"><div><label>موجودی</label><input id="pStock" type="number" min="0"></div><div><label>عکس محصول</label><input id="pImage" type="file" accept="image/*"></div></div>
+<label>توضیحات</label><textarea id="pDesc"></textarea><button onclick="saveProduct()">ذخیره محصول</button> <button class="secondary" onclick="clearForm()">پاک کردن فرم</button>
+<h2>محصولات ثبت‌شده</h2><div id="adminProducts"></div>
+<h2>اطلاعات تماس و ارسال</h2>
+<label>شماره تماس</label><input id="settingPhone" placeholder="شماره تماس">
+<label>آیدی تلگرام</label><input id="settingTelegram" placeholder="@username">
+<label>روش‌های ارسال</label><textarea id="settingDelivery">تحویل حضوری
+ارسال با پیک فوری
+ارسال با پست</textarea>
+<button onclick="saveSettings()">ذخیره اطلاعات</button>
+</div></div>
+</section>
+</main>
+<footer>© EVEIN ACCESSORY</footer>
+<script>
+const SUPABASE_URL='https://epohavhdjzdywtypnqlm.supabase.co';
+const SUPABASE_KEY='sb_publishable_zUQChcmQoXs36Q77afILfw_KzHd4W2t';
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let allProducts=[],activeCategory='همه';
+const $=id=>document.getElementById(id);
+function toggleMenu(){$('menuBox').classList.toggle('hidden')}
+function showStore(){$('storeView').classList.remove('hidden');$('adminView').classList.add('hidden');$('infoView').classList.add('hidden');$('menuBox').classList.add('hidden')}
+function showInfo(type){$('storeView').classList.add('hidden');$('adminView').classList.add('hidden');$('infoView').classList.remove('hidden');$('menuBox').classList.add('hidden');$('infoTitle').textContent=type==='contact'?'ارتباط با ما':'نحوه ارسال';loadSettings(type)}
+function adminEntry(){$('storeView').classList.add('hidden');$('infoView').classList.add('hidden');$('adminView').classList.remove('hidden');$('menuBox').classList.add('hidden');checkSession()}
+async function loadProducts(){const {data,error}=await db.from('products').select('*').order('created_at',{ascending:false});if(error){$('products').innerHTML='<div class="empty">فعلاً دریافت محصولات ممکن نیست. تنظیمات دیتابیس را بررسی کنید.</div>';return}allProducts=data||[];renderCategories();renderProducts()}
+function renderCategories(){let cats=['همه',...new Set(allProducts.map(p=>p.category).filter(Boolean))];$('categoryBar').innerHTML=cats.map(c=>`<button class="${c===activeCategory?'':'secondary'}" onclick="setCategory(${JSON.stringify(c)})">${esc(c)}</button>`).join('')}
+function setCategory(c){activeCategory=c;renderCategories();renderProducts()}
+function renderProducts(){let items=activeCategory==='همه'?allProducts:allProducts.filter(p=>p.category===activeCategory);$('products').innerHTML=items.length?items.map(p=>`<article class="card"><img src="${esc(p.image_url||'https://placehold.co/500x500/f5eaf0/987989?text=EVEIN')}" alt="${esc(p.name)}"><div class="info"><h3>${esc(p.name)}</h3><div class="muted">${esc(p.description||'')}</div><div class="price">${Number(p.price||0).toLocaleString('fa-IR')} تومان</div><div class="stock">${Number(p.stock)>0?'موجودی: '+Number(p.stock).toLocaleString('fa-IR')+' عدد':'ناموجود'}</div><button ${Number(p.stock)<=0?'disabled':''} onclick="orderProduct(${JSON.stringify(p.name)})">ثبت سفارش در دایرکت</button><div id="reviews-${p.id}"></div><button class="secondary" onclick="reviewForm('${p.id}')">ثبت نظر</button></div></article>`).join(''):'<div class="empty">هنوز محصولی اضافه نشده است 🌸</div>';items.forEach(p=>loadReviews(p.id))}
+function orderProduct(name){let msg=encodeURIComponent('سلام، برای سفارش محصول «'+name+'» پیام می‌دم.');window.open('https://ig.me/m/evein_accessory?text='+msg,'_blank')}
+async function loadReviews(id){let {data}=await db.from('reviews').select('*').eq('product_id',id).order('created_at',{ascending:false}).limit(3);let el=$('reviews-'+id);if(el&&data)el.innerHTML=data.map(r=>`<div class="review">${esc(r.review||r.comment||'')}</div>`).join('')}
+async function reviewForm(id){let name=prompt('نام شما (اختیاری):')||'مشتری';let review=prompt('نظرت درباره محصول رو بنویس:');if(!review)return;let {error}=await db.from('reviews').insert({product_id:id,name,review});alert(error?'ثبت نظر انجام نشد.':'ممنون از نظرت 🌷');loadReviews(id)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function checkSession(){let {data}=await db.auth.getSession();let yes=!!data.session;$('loginBox').classList.toggle('hidden',yes);$('adminTools').classList.toggle('hidden',!yes);if(yes){loadAdminProducts();loadSettingsForForm()}}
+async function login(){let {error}=await db.auth.signInWithPassword({email:$('loginEmail').value,password:$('loginPass').value});$('loginMsg').textContent=error?'ورود ناموفق بود؛ ایمیل و رمز را بررسی کن.':'ورود موفق';if(!error)checkSession()}
+async function logout(){await db.auth.signOut();checkSession()}
+async function saveProduct(){let id=$('editId').value,name=$('pName').value.trim();if(!name){alert('نام محصول را وارد کن');return}let imageUrl=null,file=$('pImage').files[0];if(file){let ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+ext;let up=await db.storage.from('evein-products').upload(path,file,{upsert:false});if(up.error){alert('آپلود عکس ناموفق بود: '+up.error.message);return}imageUrl=db.storage.from('evein-products').getPublicUrl(path).data.publicUrl}
+let row={name,category:$('pCategory').value,price:Number($('pPrice').value||0),stock:Number($('pStock').value||0),description:$('pDesc').value};if(imageUrl)row.image_url=imageUrl;
+let result=id?await db.from('products').update(row).eq('id',id):await db.from('products').insert(row);if(result.error){alert('ذخیره نشد: '+result.error.message);return}alert('محصول ذخیره شد 🌸');clearForm();loadProducts();loadAdminProducts()}
+function clearForm(){['editId','pName','pCategory','pPrice','pStock','pDesc','pImage'].forEach(x=>$(x).value='')}
+async function loadAdminProducts(){let {data}=await db.from('products').select('*').order('created_at',{ascending:false});$('adminProducts').innerHTML=(data||[]).map(p=>`<div class="panel"><b>${esc(p.name)}</b> · موجودی ${Number(p.stock)}<br><button class="secondary" onclick="editProduct('${p.id}')">ویرایش</button> <button class="secondary" onclick="deleteProduct('${p.id}')">حذف</button></div>`).join('')||'محصولی ثبت نشده'}
+async function editProduct(id){let {data}=await db.from('products').select('*').eq('id',id).single();if(!data)return;$('editId').value=data.id;$('pName').value=data.name||'';$('pCategory').value=data.category||'';$('pPrice').value=data.price||0;$('pStock').value=data.stock||0;$('pDesc').value=data.description||'';window.scrollTo({top:0,behavior:'smooth'})}
+async function deleteProduct(id){if(!confirm('این محصول حذف شود؟'))return;let {error}=await db.from('products').delete().eq('id',id);if(error)alert('حذف ناموفق بود');loadProducts();loadAdminProducts()}
+async function loadSettingsForForm(){let {data}=await db.from('store_settings').select('*').limit(1).maybeSingle();if(data){$('settingPhone').value=data.phone||'';$('settingTelegram').value=data.telegram||'';$('settingDelivery').value=data.delivery||'تحویل حضوری\nارسال با پیک فوری\nارسال با پست'}}
+async function saveSettings(){let {data:old}=await db.from('store_settings').select('id').limit(1).maybeSingle();let row={phone:$('settingPhone').value,telegram:$('settingTelegram').value,delivery:$('settingDelivery').value};let res=old?await db.from('store_settings').update(row).eq('id',old.id):await db.from('store_settings').insert(row);alert(res.error?'ذخیره اطلاعات ناموفق بود':'اطلاعات ذخیره شد 🌷')}
+async function loadSettings(type){let {data}=await db.from('store_settings').select('*').limit(1).maybeSingle();data=data||{phone:'09216476938',delivery:'تحویل حضوری\nارسال با پیک فوری\nارسال با پست'};if(type==='contact')$('infoText').innerHTML=`<p>شماره تماس: ${esc(data.phone||'ثبت نشده')}</p><p>تلگرام: ${esc(data.telegram||'ثبت نشده')}</p><p>اینستاگرام: @evein_accessory</p>`;else $('infoText').innerHTML='<p>'+esc(data.delivery||'تحویل حضوری\nارسال با پیک فوری\nارسال با پست').replace(/\n/g,'<br>')+'</p><p>برای ثبت سفارش اسکرین‌شات بگیرید و برام دایرکت بفرستید.</p>'}
+db.auth.onAuthStateChange(()=>{});
+loadProducts();
+</script>
+</body></html>
