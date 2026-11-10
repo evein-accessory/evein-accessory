@@ -1,6 +1,15 @@
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "c05ece47-322f-4268-a0a4-bb8000381f4a",
+    });
+  });
+</script>  
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EVEIN | اکسسوری</title>
 <style>
