@@ -51,7 +51,21 @@ footer{text-align:center;padding:30px 20px;color:var(--muted);border-top:1px sol
 <section id="trackingView" class="hidden"><div class="cart-wrap"><button class="btn outline" onclick="showStore()">← بازگشت به فروشگاه</button><h2>پیگیری مرسوله</h2><div id="trackingContent" class="admin-products">در حال بررسی حساب کاربری...</div></div></section>
 <footer> evein <span class="brand-accessory">accessory</span> · با عشق انتخاب شده 🤍<br><small>برای سفارش، از طریق اینستاگرام پیام بدهید.</small></footer>
 <div id="lightbox" class="lightbox hidden" onclick="closeZoom()"><button class="close" onclick="closeZoom()">×</button><img id="zoomImage" alt="نمایش بزرگ محصول"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* منوی مستقل؛ حتی اگر اتصال دیتابیس یا اسکریپت فروشگاه خطا داشته باشد */
+window.toggleMenu = function(){ const menu=document.getElementById('hambMenu'); if(menu) menu.classList.toggle('hidden'); };
+window.closeInfo = function(){ const shade=document.getElementById('infoShade'); if(shade) shade.classList.add('hidden'); };
+window.openInfo = function(type){
+  const menu=document.getElementById('hambMenu'); if(menu) menu.classList.add('hidden');
+  const shade=document.getElementById('infoShade'), content=document.getElementById('infoContent');
+  if(!shade||!content)return;
+  content.innerHTML = type==='contact'
+    ? '<h2>ارتباط با ما</h2><p>برای پرسش‌ها و ثبت سفارش، از طریق صفحه اینستاگرام ما پیام بدهید.</p><p><a href="https://instagram.com/evein_accessory" target="_blank" rel="noopener">پیام به evein_accessory در اینستاگرام</a></p>'
+    : '<h2>نحوه ارسال ما</h2><p>• تحویل حضوری</p><p>• ارسال با پیک فوری</p><p>• ارسال با پست به سراسر ایران</p>';
+  shade.classList.remove('hidden');
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';"></script>
 <script>
 const SUPABASE_URL='https://epohavhdjzdywtypnqlm.supabase.co';
 const SUPABASE_KEY='sb_publishable_zUQChcmQoXs36Q77afILfw_KzHd4W2t';
