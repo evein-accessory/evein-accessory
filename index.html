@@ -191,7 +191,58 @@ async function renderAccountState(){const {data:{session}}=await sb.auth.getSess
 async function accountLogout(){customerLookupPhone='';cartOwner=null;await renderAccountState();}
 async function login(){const email=$('email').value.trim(),password=$('password').value;const {error}=await sb.auth.signInWithPassword({email,password});if(error){$('adminMsg').innerHTML='<div class="msg">ورود ناموفق بود؛ ایمیل و رمز را بررسی کن.</div>';return;}checkSession();}
 async function isCurrentAdmin(){const {data:{session}}=await sb.auth.getSession();return (session?.user?.email||'').toLowerCase()==='mobina.fakoori200685@gmail.com';}
-function switchAdminTab(tab){const names=['products','categories','orders','customers','carts','reviews'];names.forEach(name=>{const panel=$('adminTab'+name.charAt(0).toUpperCase()+name.slice(1));if(panel)panel.classList.toggle('hidden',name!==tab);const button=document.querySelector('.admin-tab[data-tab="'+name+'"]');if(button)button.classList.toggle('active',name===tab);});if(tab==='orders')loadAdminOrders();if(tab==='customers')loadAdminCustomers();if(tab==='carts')loadAdminCarts();if(tab==='reviews')loadAdminReviews();window.scrollTo(0,0);}
+let bannerSlides=[],bannerIndex=0,bannerTimer=null;
+async function loadBanners(){
+ const box=$('bannerSlider');if(!box)return;
+ const {data,error}=await sb.from('banner_slides').select('id,image_url,sort_order').order('sort_order',{ascending:true}).order('id',{ascending:true});
+ if(error){console.error('بارگذاری بنرها:',error);box.innerHTML='<div class="banner-empty">نمایش بنرها موقتاً ممکن نیست.</div>';return;}
+ bannerSlides=data||[];bannerIndex=0;renderBannerSlider();
+}
+function renderBannerSlider(){
+ const box=$('bannerSlider');if(!box)return;
+ if(bannerTimer){clearInterval(bannerTimer);bannerTimer=null;}
+ if(!bannerSlides.length){box.innerHTML='<div class="banner-empty">عکس‌های ویژه EVEIN به‌زودی اینجا نمایش داده می‌شوند ✨</div>';return;}
+ box.innerHTML=bannerSlides.map((item,i)=>'<div class="banner-slide '+(i===bannerIndex?'active':'')+'"><img src="'+esc(item.image_url)+'" alt="بنر فروشگاه EVEIN" loading="'+(i===0?'eager':'lazy')+'"></div>').join('')+(bannerSlides.length>1?'<button class="banner-arrow prev" type="button" aria-label="بنر قبلی" onclick="changeBanner(-1)">›</button><button class="banner-arrow next" type="button" aria-label="بنر بعدی" onclick="changeBanner(1)">‹</button><div class="banner-dots">'+bannerSlides.map((x,i)=>'<button type="button" class="banner-dot '+(i===bannerIndex?'active':'')+'" aria-label="نمایش بنر '+(i+1)+'" onclick="goBanner('+i+')"></button>').join('')+'</div>':'');
+ if(bannerSlides.length>1)bannerTimer=setInterval(()=>changeBanner(1),4500);
+}
+function goBanner(index){if(!bannerSlides.length)return;bannerIndex=(index+bannerSlides.length)%bannerSlides.length;renderBannerSlider();}
+function changeBanner(step){goBanner(bannerIndex+step);}
+async function loadAdminBanners(){
+ if(!(await isCurrentAdmin()))return;
+ const box=$('adminBanners');if(!box)return;box.textContent='در حال دریافت بنرها...';
+ const {data,error}=await sb.from('banner_slides').select('id,image_url,sort_order').order('sort_order',{ascending:true}).order('id',{ascending:true});
+ if(error){box.innerHTML='<div class="msg">خطا در دریافت بنرها: '+esc(error.message)+'</div>';return;}
+ box.innerHTML=(data||[]).length?data.map((b,i)=>'<div class="admin-row banner-admin-row"><img src="'+esc(b.image_url)+'" alt="بنر '+(i+1)+'"><div style="flex:1"><b>بنر '+(i+1)+'</b><br><small>ترتیب نمایش: '+esc(String(b.sort_order??i))+'</small></div><button class="btn outline" onclick="deleteBanner('+JSON.stringify(b.id)+')">حذف</button></div>').join(''):'هنوز عکسی برای اسلایدر اضافه نکرده‌ای.';
+}
+async function uploadBanner(){
+ const msg=$('bannerAdminMsg'),button=document.querySelector('button[onclick="uploadBanner()"]'),file=$('bannerImage')?.files?.[0];
+ const show=(t)=>{if(msg)msg.innerHTML='<div class="msg">'+t+'</div>';};
+ if(!(await isCurrentAdmin())){show('برای افزودن بنر باید با حساب مدیریت وارد شوی.');return;}
+ if(!file){show('لطفاً ابتدا یک عکس انتخاب کن.');return;}
+ if(!file.type.startsWith('image/')){show('فقط فایل تصویری انتخاب کن.');return;}
+ if(file.size>5*1024*1024){show('حجم عکس باید کمتر از ۵ مگابایت باشد.');return;}
+ try{
+  if(button){button.disabled=true;button.textContent='در حال بارگذاری...';}
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path='banners/'+Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+ext;
+  const {error:upErr}=await sb.storage.from('evein-products').upload(path,file,{upsert:false,contentType:file.type||'image/jpeg'});
+  if(upErr){show('بارگذاری عکس انجام نشد: '+esc(upErr.message));return;}
+  const image_url=sb.storage.from('evein-products').getPublicUrl(path).data.publicUrl;
+  const {data:existing,error:readErr}=await sb.from('banner_slides').select('sort_order').order('sort_order',{ascending:false}).limit(1);
+  if(readErr){show('خواندن ترتیب بنرها انجام نشد: '+esc(readErr.message));return;}
+  const {error}=await sb.from('banner_slides').insert({image_url,sort_order:existing?.[0]?.sort_order!=null?Number(existing[0].sort_order)+1:0});
+  if(error){show('ثبت بنر در دیتابیس انجام نشد: '+esc(error.message));return;}
+  $('bannerImage').value='';show('عکس با موفقیت به اسلایدر اضافه شد 🌸');await loadBanners();await loadAdminBanners();
+ }catch(e){show('خطای غیرمنتظره: '+esc(e?.message||e));}
+ finally{if(button){button.disabled=false;button.textContent='افزودن عکس به اسلایدر';}}
+}
+async function deleteBanner(id){
+ if(!(await isCurrentAdmin()))return;
+ if(!confirm('این عکس از اسلایدر حذف شود؟'))return;
+ const {error}=await sb.from('banner_slides').delete().eq('id',id);
+ if(error){alert('حذف بنر انجام نشد: '+error.message);return;}
+ await loadBanners();await loadAdminBanners();
+}
+function switchAdminTab(tab){const names=['products','categories','orders','customers','carts','reviews','banners'];names.forEach(name=>{const panel=$('adminTab'+name.charAt(0).toUpperCase()+name.slice(1));if(panel)panel.classList.toggle('hidden',name!==tab);const button=document.querySelector('.admin-tab[data-tab="'+name+'"]');if(button)button.classList.toggle('active',name===tab);});if(tab==='orders')loadAdminOrders();if(tab==='customers')loadAdminCustomers();if(tab==='carts')loadAdminCarts();if(tab==='reviews')loadAdminReviews();if(tab==='banners')loadAdminBanners();window.scrollTo(0,0);}
 async function checkSession(){const {data:{session}}=await sb.auth.getSession();const isAdmin=(session?.user?.email||'').toLowerCase()==='mobina.fakoori200685@gmail.com';const isCustomer=!!session&&!isAdmin;$('loginPanel').classList.toggle('hidden',isAdmin||isCustomer);$('adminPanel').classList.toggle('hidden',!isAdmin);if(isAdmin){renderAdminProducts();switchAdminTab('products');}else{$('adminProducts').innerHTML='';$('adminOrders').innerHTML='';}if(isCustomer&&$('adminView').classList.contains('hidden')===false)showStore();}
 async function logout(){await sb.auth.signOut();checkSession();}
 function resetForm(){editingId=null;['pName','pPrice','pStock','pDesc','pDesigns'].forEach(id=>$(id).value='');$('pCategory').value='';$('pImage').value='';$('designEditor').classList.add('hidden');$('formTitle').textContent='افزودن محصول جدید';$('cancelEdit').classList.add('hidden');}
@@ -233,6 +284,6 @@ async function editProduct(id){if(!(await isCurrentAdmin())){alert('اجازه �
 async function deleteProduct(id){if(!(await isCurrentAdmin())){alert('اجازه حذف محصول را نداری.');return;}if(!confirm('این محصول حذف شود؟'))return;const {error}=await sb.from('products').delete().eq('id',id);if(error){alert('حذف انجام نشد.');return;}await loadProducts();}
 function togglePassword(id,button){const input=document.getElementById(id);if(!input)return;const show=input.type==='password';input.type=show?'text':'password';button.innerHTML=show?"<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" focusable=\"false\"><path d=\"m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8\"></path><path d=\"M9.9 5.2A11.5 11.5 0 0 1 12 5c6.4 0 10 7 10 7a15.7 15.7 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1.5 0 2.8-.4 4-1\"></path></svg>":"<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z\"></path><circle cx=\"12\" cy=\"12\" r=\"3\"></circle></svg>";button.setAttribute('aria-label',show?'پنهان کردن رمز عبور':'نمایش رمز عبور');button.setAttribute('title',show?'پنهان کردن رمز عبور':'نمایش رمز عبور');}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-sb.auth.onAuthStateChange(()=>{checkSession();if(!$('accountView').classList.contains('hidden'))renderAccountState();});loadProducts();loadCustomerCart();updateCartCount();initLocationFields();
+sb.auth.onAuthStateChange(()=>{checkSession();if(!$('accountView').classList.contains('hidden'))renderAccountState();});loadProducts();loadBanners();loadCustomerCart();updateCartCount();initLocationFields();
 window.addEventListener('hashchange',()=>{if(!location.hash)showStore();});
 </script><nav class="mobile-bottom-nav" aria-label="منوی اصلی موبایل"><button onclick="showStore()"><span class="nav-icon">⌂</span><span>خانه</span></button><button onclick="goCategories()"><span class="nav-icon">▦</span><span>دسته‌بندی</span></button><button onclick="showCart()"><span class="nav-icon">🛒</span><span>سبد خرید <b id="bottomCartCount">۰</b></span></button><button onclick="showAccount()"><span class="nav-icon">♙</span><span>حساب کاربری</span></button></nav><script>function goCategories(){showStore();setTimeout(()=>document.getElementById("categories")?.scrollIntoView({behavior:"smooth",block:"center"}),80);} if(location.hash==="#admin"){setTimeout(()=>showAdmin(),250);} </script></body></html>
